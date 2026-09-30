@@ -1,0 +1,223 @@
+---
+title: "Client Report - Famous Names"
+subtitle: "Unit 1 Task 3"
+author: "Talmage Trebilcock"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+import polars as pl
+import numpy as np
+from lets_plot import *
+
+LetsPlot.setup_html(isolated_frame=True)
+```
+
+```{python}
+# Learn morea about Code Cells: https://quarto.org/docs/reference/cells/cells-jupyter.html
+
+# Include and execute your code here
+df = pl.read_csv("https://posit.byui.edu/content/0d43d66f-d3b7-4c43-8c36-52e3ed69e7f1/names_year_csv.csv")
+```
+
+
+
+## QUESTION 1
+
+<!-- Make sure at least one of your charts includes reference marks!! -->
+
+__Make a new column that represents the total number of babies with your name for only those states in which you have lived. (If you have only ever lived in one state, pick at least one other state so you get practice summing across columns). Make a graph displaying that total for your name over time.__
+
+The resulting chart shows the usage of the name "Talmage" in the states of Georgia, Oklahoma, and Idaho from 1913 to 2024. Interistingly, there appears to only be 4 spike of usage in 4 individual years of use of the name across the 3 states with a maximum usage in one year between the 3 being 6 in total.
+
+_AI use reflection_
+**Link** to the original chat:
+**The Process** How exactly did you use the tool?
+**The Impact**  How did using AI impact your learning?
+
+```{python}
+# Q1
+import polars as pl
+import numpy as np
+from lets_plot import *
+
+LetsPlot.setup_html()
+
+df = pl.read_csv("names_year_csv.csv")
+
+df = df.filter(pl.col("name") == "Talmage").select(pl.col("name", "year", "GA", "OK", "ID")).with_columns(states_total = pl.col("GA") + pl.col("OK") + pl.col("ID"))
+
+(ggplot(df, 
+        aes(x="year",
+            y="states_total")) + 
+        geom_line() + 
+        scale_x_continuous(format="d") + 
+        labs(
+          title="'Talmage' Usage Over Time",
+          subtitle="In the States of Georgia, Oklahoma, and Idaho",
+          x="year",
+          y="Total Usage"
+        )
+)
+```
+
+
+## QUESTION 2
+
+1. __Let's look at a name that is special for members of the church: Brigham. For each year, calculate what proportion of babies named Brigham were born in Idaho and Utah? Make a graph displaying the proportion over time.__  
+
+This graph shows the % of the the usage of the name "Brigham" as a baby name across the United States by year that comes from just the states of Utah and Idaho. According to this graph, from 1971 until 1987 as well as from 1993 until 1996, 100% of the babies named Brigham were born in either Utah or Idaho. After 1996, it appears that other states begin to see babies named Brigham as the % of usage by Utah and Idaho dips and stays between 87% and 38%. It can be assumed that the data from 1992 is likely an outlier of 0% which is not only surrounded on each side by data of 100% usage, but also never reaches anywhere near that low ever again. Likely it is from a year that both Utah and Idaho neglected to record any usage of the name that year and another state did record at least 1 which would result in the 0%. It is already evident that, for the name Brigham, there is not data for every year.
+
+_AI use reflection_
+**Link** to the original chat:
+**The Process** How exactly did you use the tool?
+**The Impact**  How did using AI impact your learning?
+
+```{python}
+# Q2
+import polars as pl
+import numpy as np
+from lets_plot import *
+
+LetsPlot.setup_html()
+
+df = pl.read_csv("names_year_csv.csv")
+
+df = (df.filter(pl.col("name") == "Brigham")
+        .select("name", "year", "UT", "ID", "Total")
+        .with_columns(UT_ID_Percentage = (pl.col("UT") + pl.col("ID")) / pl.col("Total") * 100))
+
+(
+ggplot(df, aes(x="year", y="UT_ID_Percentage")) +
+            geom_line() +
+            geom_point() +
+            scale_x_continuous(format="d") +
+            labs(title = "Utah and Idaho Brigham %",
+                 subtitle = "The % of babies named Brigham in the United States from UT and ID",
+                 x="Year",
+                 y="%",
+                 color="Legend")
+)
+```
+
+<!-- Make sure at least one of your charts includes reference marks!! -->
+
+## QUESTION 3
+
+1. __Consider doing some data validation. For the name David, calculate a sum of all 50 states and District of Columbia for each year. Now compare that total to the value in the 'Total' column. In which years, if any, do they not agree?__
+
+The data agrees in all of the years. This is beacuse, when all of the individual state totals are summed and then you filter the data where the sum that was calculated does not equal the total from the data, the chart returns empty. This means that the data is consistent across all years that have data.
+
+_AI use reflection_
+**Link** to the original chat:
+**The Process** How exactly did you use the tool?
+**The Impact**  How did using AI impact your learning?
+
+```{python}
+# Q3
+import polars as pl
+import numpy as np
+from lets_plot import *
+
+LetsPlot.setup_html()
+
+df = pl.read_csv("names_year_csv.csv")
+
+df = (df.filter(pl.col("name") == "David")
+        .with_columns(total_check = pl.col("AK") + 
+                                    pl.col("AL") + 
+                                    pl.col("AR") + 
+                                    pl.col("AZ") + 
+                                    pl.col("CA") + 
+                                    pl.col("CO") + 
+                                    pl.col("CT") + 
+                                    pl.col("DC") + 
+                                    pl.col("DE") + 
+                                    pl.col("FL") + 
+                                    pl.col("GA") + 
+                                    pl.col("HI") + 
+                                    pl.col("IA") + 
+                                    pl.col("ID") + 
+                                    pl.col("IL") + 
+                                    pl.col("IN") + 
+                                    pl.col("KS") + 
+                                    pl.col("KY") + 
+                                    pl.col("LA") + 
+                                    pl.col("MA") + 
+                                    pl.col("MD") + 
+                                    pl.col("ME") + 
+                                    pl.col("MI") + 
+                                    pl.col("MN") + 
+                                    pl.col("MO") + 
+                                    pl.col("MS") + 
+                                    pl.col("MT") + 
+                                    pl.col("NC") + 
+                                    pl.col("ND") + 
+                                    pl.col("NE") + 
+                                    pl.col("NH") + 
+                                    pl.col("NJ") + 
+                                    pl.col("NM") + 
+                                    pl.col("NV") + 
+                                    pl.col("NY") + 
+                                    pl.col("OH") + 
+                                    pl.col("OK") + 
+                                    pl.col("OR") + 
+                                    pl.col("PA") + 
+                                    pl.col("RI") + 
+                                    pl.col("SC") + 
+                                    pl.col("SD") + 
+                                    pl.col("TN") + 
+                                    pl.col("TX") + 
+                                    pl.col("UT") + 
+                                    pl.col("VA") + 
+                                    pl.col("VT") + 
+                                    pl.col("WA") + 
+                                    pl.col("WI") + 
+                                    pl.col("WV") + 
+                                    pl.col("WY"))
+          .filter(pl.col("Total") != pl.col("total_check")))
+
+df
+
+# This code plots the total and the total check over eachother to tho where they are not equal. However, I realized this is not needed since we can filter all times that the total and the check are not equal.
+
+# (
+# ggplot(df, aes(x="year")) +
+#       geom_line(aes(y="total_check"), color="Red") +
+#        geom_point(aes(y="total_check"), color="Red") +
+#        geom_line(aes(y="Total"), color="Black") +
+#        geom_point(aes(y="Total"), color="Black") +
+#        scale_x_continuous(format="d") +
+#        scale_color_manual(
+#           name="Legend",
+#           values={
+#             "Total": "black",
+#             "Verify Total": "red"
+#           }
+#        ) +
+#        labs(title="Total usage of David",
+#             subtitle="Validating data for David usage across the United States",
+#             x="Year",
+#             y="Total Usage")
+# )
+```
