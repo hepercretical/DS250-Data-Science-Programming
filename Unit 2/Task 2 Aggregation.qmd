@@ -1,7 +1,7 @@
 ---
 title: "Client Report - Flights: Column Aggregation"
 subtitle: "Unit 2 Task 2"
-author: "[STUDENT NAME]"
+author: "Talmage Trebilcock"
 format:
   html:
     self-contained: true
@@ -50,49 +50,100 @@ df = pl.read_json(io.BytesIO(response.content))
 
 __Calculate the sample size (i.e. number of rows in the dataset) for each airport in each year__. What do you notice?
 
-_Describe your results and analysis here_
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+When you group the airport data by the airport's name or the airport's code, some of the airports do not have any string so there can be some data missing.
 
 ```{python}
 # Include and execute your code here
+import polars as pl
+import requests
+import io
+import numpy as np
 
+df = pl.read_json("flights.json")
 
+df = (
+  df
+  .group_by(["airport_code", "year"])
+  .agg(pl.col("airport_code").count().alias("sample_size"))
+)
+
+df
 ```
 
 ## QUESTION 2
 
 __Which airport has the worst delays?__ Describe the metric you chose, and why you chose it to determine the “worst” airport. Your answer should include a summary table that lists (for each airport) the total number of flights, total number of delayed flights, proportion of delayed flights, and average delay time in hours. 
 
-_Describe your results and analysis here_
+According to the data after it has been grouped and aggregated, the airport with the highest percentage of delayed flights is SFO, or the San Francisco International Airport. At the same time, the airport with the highest average delay time in hours is ORD, or the Chicago O'Hare International Airport which means that if you do have a delay, the average delay time of 1.1 hours.
 
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+Overall, the San Francisco International Airport is the worst since it has the highest percentage of delayed flights by far and has the second longest average delay times of 1.03 hours.
 
 ```{python}
 # Include and execute your code here
+import polars as pl
+import requests 
+import io       
+import numpy as np
 
+df = pl.read_json("flights.json")
 
+# Cleans out messy strings from the data.
+df = (df
+  .with_columns(pl.col("num_of_flights_total").cast(pl.Int64, strict=False))
+  .with_columns(pl.col("num_of_delays_total").cast(pl.Int64, strict=False))
+  .with_columns(pl.col("minutes_delayed_total").cast(pl.Int64, strict=False))
+)
+
+df = (
+  df
+  .group_by("airport_code")
+  .agg(
+    pl.col("num_of_flights_total").sum().alias("total_flights"),
+    pl.col("num_of_delays_total").sum().alias("total_delayed_flights"),
+    (pl.col("minutes_delayed_total").sum() / 60).alias("total_delay_time_hours")
+  )
+  .with_columns(((pl.col("total_delayed_flights") / pl.col("total_flights")) * 100).alias("percent_delayed"))
+  .with_columns((pl.col("total_delay_time_hours") / pl.col("total_delayed_flights")).alias("avg_delay_time_hours"))
+  .select("airport_code", "total_flights", "total_delayed_flights", "percent_delayed", "avg_delay_time_hours")
+  .sort("percent_delayed", descending=True)
+)
+
+df
 ```
 
 ## QUESTION 3
 
 __Create a barplot showing the proportion of all flights that are delayed at each airport. Describe what you learn from this graph.__  
 
-_Describe your results and analysis here_
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+From this graph you can easily see that on average, the SFO and ORD airports average the highest percentage of delayed flights per month. At the same time the ATL, DEN, IAD, and SAN airports typically average the same percentage of delayed flights. It is obvious that SLC averages the least percentage of delayed flights in a month with only a handful of outliers months ever reaching above 25%.
 
 ```{python}
 # Include and execute your code here
+import polars as pl
+import requests
+import io
+import numpy as np
+from lets_plot import *
 
+LetsPlot.setup_html(isolated_frame=True)
 
+df = pl.read_json("flights.json")
+
+# Cleans out messy strings from the data.
+df = (df
+  .with_columns(pl.col("num_of_flights_total").cast(pl.Int64, strict=False))
+  .with_columns(pl.col("num_of_delays_total").cast(pl.Int64, strict=False))
+)
+
+df = (
+  df
+  .with_columns(((pl.col("num_of_delays_total") / pl.col("num_of_flights_total")) * 100).alias("percent_delayed"))
+)
+
+(ggplot(df, aes(x="airport_code", y="percent_delayed", fill="airport_code")) +
+geom_boxplot() +
+labs(title="Percentage of Flights Delayed each month by Airport",
+  x="Airport",
+  y="Total Delays") +
+theme_minimal())
 ```
