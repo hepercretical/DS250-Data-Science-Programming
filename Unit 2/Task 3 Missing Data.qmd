@@ -1,0 +1,323 @@
+---
+title: "Client Report - Missing values"
+subtitle: "Unit 2 Task 3"
+author: "Talmage Trebilcock"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+import polars as pl
+import requests #new for reading in JSON
+import io       #new for reading in JSON
+import numpy as np
+from lets_plot import *
+
+LetsPlot.setup_html(isolated_frame=True)
+```
+
+
+```{python}
+url = "https://raw.githubusercontent.com/byuidatascience/data4missing/master/data-raw/flights_missing/flights_missing.json"
+response = requests.get(url)
+df = pl.read_json(io.BytesIO(response.content))
+```
+
+## QUESTION 1
+
+1. __Convert values to missing__ Start with a fresh copy of the flights dataset by reading it in from the link provided above (as opposed to starting with the dataset you ended with in the last assignment). Identify data values that are problematic, non-sense or impossible and change them to be missing. In your report include one record example (one row) from your clean data, in the raw JSON format. Your example should display at least one missing value so that we can verify it was done correctly. (Note: JSON will convert NaN's to null). Describe your process for finding values that needed to be changed, and how you changed them.
+
+This data includes missing data in the form of null data which was just never entered or empty data like words without any letters or labeled as n/a. Both of these have been changed to read "missing" to make it clear where missing data is and easier to filter out. This was done by converting all empty strings to null and then converting all null data to the "missing" string.
+
+```{python}
+# Include and execute your code here
+import polars as pl
+import requests
+import io
+import numpy as np
+
+url = "https://raw.githubusercontent.com/byuidatascience/data4missing/master/data-raw/flights_missing/flights_missing.json"
+response = requests.get(url)
+df = pl.read_json(io.BytesIO(response.content))
+
+df_empty_to_null = (df
+  .with_columns(pl.when(pl.col(pl.String) == "" )
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.String) == "n/a")
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.String) == "1500+")
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+  .with_columns(pl.when(pl.col(pl.Int64) < 0)
+    .then(None)
+    .otherwise(pl.col(pl.Int64))
+    .name.keep()
+  )
+)
+
+df_null_to_missing = (df_empty_to_null
+  .fill_null(pl.lit("missing"))
+)
+
+df_example = (df_null_to_missing
+  .filter(pl.any_horizontal(pl.col("*")
+    .cast(pl.String).str.contains("missing")
+  ))
+)
+
+df_example.head(1).write_json()
+```
+
+## QUESTION 2
+
+2. __Filling in missing data__ For all the "minutes_delayed" columns, fill in any missing values with the median of that column. For the "num_of" columns, fill in missing values with that column's mean.
+
+```{python}
+# Include and execute your code here
+import polars as pl
+import requests
+import io
+import numpy as np
+
+url = "https://raw.githubusercontent.com/byuidatascience/data4missing/master/data-raw/flights_missing/flights_missing.json"
+response = requests.get(url)
+
+df = pl.read_json(io.BytesIO(response.content))
+
+df_empty_to_null = (df
+  .with_columns(pl.when(pl.col(pl.String) == "" )
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.String) == "n/a")
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.String) == "1500+")
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.Int64) < 0)
+    .then(None)
+    .otherwise(pl.col(pl.Int64))
+    .name.keep()
+  )
+)
+
+df_null_to_missing = (df_empty_to_null
+  .fill_null(pl.lit("missing"))
+)
+
+df_fixed_data = (df_null_to_missing
+  # Every column with "minutes_delayed" gets missing data changed to the median of the entire column.
+  .with_columns(pl.col("minutes_delayed_carrier")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_carrier").cast(pl.Float64, strict=False).drop_nulls().median()))
+  .with_columns(pl.col("minutes_delayed_carrier").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("minutes_delayed_late_aircraft")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_late_aircraft").cast(pl.Float64, strict=False).drop_nulls().median()))
+  .with_columns(pl.col("minutes_delayed_late_aircraft").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("minutes_delayed_nas")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_nas").cast(pl.Float64, strict=False).drop_nulls().median()))
+  .with_columns(pl.col("minutes_delayed_nas").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("minutes_delayed_security")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_security").cast(pl.Float64, strict=False).drop_nulls().median()))
+  .with_columns(pl.col("minutes_delayed_security").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("minutes_delayed_weather")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_weather").cast(pl.Float64, strict=False).drop_nulls().median()))
+  .with_columns(pl.col("minutes_delayed_weather").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("minutes_delayed_total")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_total").cast(pl.Float64, strict=False).drop_nulls().median()))
+  .with_columns(pl.col("minutes_delayed_total").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_flights_total")
+    .str.replace_all("missing", 
+    pl.col("num_of_flights_total").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_flights_total").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_carrier")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_carrier").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_carrier").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_late_aircraft")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_late_aircraft").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_late_aircraft").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_nas")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_nas").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_nas").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_security")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_security").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_security").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_weather")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_weather").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_weather").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_total")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_total").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_total").cast(pl.Float64, strict=False))
+)
+
+df_fixed_data.head()
+```
+
+## QUESTION 3
+ 
+3. __Display a histogram for num_of_delays_carrier and for minutes_delayed_nas (2 separate histograms in total). Comment on the shape of each one. Also report the mean of each of these columns now that missing values have been filled in.__
+
+The two histograms for the number of carrier delays and the minutes of nas delays show a simmilar shape with data more often found in the bins on the left with less data being found in each bin as you progress right, however each also has 1 outlier bin that is much taller than those surrounding it. These outliers are caused by changing missing or otherwise unusable data into the mean of the relevant usable data, which makes it even more likely for that data to fall into the mean of the histogram. The mean of the number of Carrier Delays is 700.4 while the mean of Minutes for Nas Delays is 22,432.8.
+
+```{python}
+# Include and execute your code here
+import polars as pl
+import requests
+import io
+import numpy as np
+from lets_plot import *
+
+url = "https://raw.githubusercontent.com/byuidatascience/data4missing/master/data-raw/flights_missing/flights_missing.json"
+response = requests.get(url)
+df = pl.read_json(io.BytesIO(response.content))
+
+df_empty_to_null = (df
+  .with_columns(pl.when(pl.col(pl.String) == "" )
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.String) == "n/a")
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.String) == "1500+")
+    .then(None)
+    .otherwise(pl.col(pl.String))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.Int64) < 0)
+    .then(None)
+    .otherwise(pl.col(pl.Int64))
+    .name.keep()
+  )
+
+  .with_columns(pl.when(pl.col(pl.Float64) < 0)
+    .then(None)
+    .otherwise(pl.col(pl.Float64))
+    .name.keep()
+  )
+)
+
+df_null_to_missing = (df_empty_to_null
+  .fill_null(pl.lit("missing"))
+)
+
+df_fixed_data = (df_null_to_missing
+  # Every column with "minutes_delayed" gets missing data changed to the median of the entire column.
+  .with_columns(pl.col("minutes_delayed_nas")
+    .str.replace_all("missing", 
+    pl.col("minutes_delayed_nas").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("minutes_delayed_nas").cast(pl.Float64, strict=False))
+
+  .with_columns(pl.col("num_of_delays_carrier")
+    .str.replace_all("missing", 
+    pl.col("num_of_delays_carrier").cast(pl.Float64, strict=False).drop_nulls().mean()))
+  .with_columns(pl.col("num_of_delays_carrier").cast(pl.Float64, strict=False))
+)
+
+LetsPlot.setup_html(isolated_frame=True)
+
+(ggplot(df_fixed_data) +
+  geom_histogram(
+    aes(x = "minutes_delayed_nas"),
+    fill = "blue"
+  ) +
+  geom_histogram(
+    aes(x = "num_of_delays_carrier"),
+    fill = "orange"
+  )
+)
+
+plot1 = (ggplot(df_fixed_data, aes(x = "year")) +
+  geom_histogram(
+    aes(x = "minutes_delayed_nas"),
+    fill = "blue",
+    bins = 25
+  ) +
+  labs(y = "Number of occurances",
+    x = "Minutes of Nas Delays")
+)
+
+plot2 = (ggplot(df_fixed_data, aes(x = "year")) +
+  geom_histogram(
+    aes(x = "num_of_delays_carrier"),
+    fill = "orange",
+    bins = 25
+  ) +
+  labs(y = "Number of occurances",
+    x = "Number of Carrier Delays")
+
+)
+
+bunch = GGBunch()
+bunch.add_plot(plot2, 0, 0, 400, 400)
+bunch.add_plot(plot1, 420, 0, 400, 400)
+
+bunch.show()
+```
