@@ -37,19 +37,14 @@ LetsPlot.setup_html(isolated_frame=True)
 # Learn morea about Code Cells: https://quarto.org/docs/reference/cells/cells-jupyter.html
 
 # Include and execute your code here
-df = pl.read_csv("https://posit.byui.edu/content/0d43d66f-d3b7-4c43-8c36-52e3ed69e7f1/names_year_csv.csv")
+df = pl.read_csv("names_year_csv.csv")
 ```
 
 ## QUESTION 1
 
 __What was the earliest year that the name ‘Felisha’ was used?__
 
-The earliest year that the name 'Felisha' was used was 1964, there was a total of 20 babies named Felisha that
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+The earliest year that the name 'Felisha' was used was 1964.
 
 ```{python}
 # Q1
@@ -64,7 +59,7 @@ df.filter(
   pl.col('name'),pl.col('year'),pl.col('Total')
 ).sort(
   pl.col('year').abs(),descending=False
-).head(5)
+).head(1)
 ```
 
 
@@ -72,12 +67,7 @@ df.filter(
 
 __What year had the most babies named 'David'? How many babies were named 'David' that year?__
 
-The most babies born that were named David was in 1955 with a total of 86,389 babies named David in total that year.
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+The year with the most babies born named David was 1955 with a total of 86,389.
 
 ```{python}
 # Q2
@@ -92,7 +82,7 @@ df.filter(
   pl.col('name'),pl.col('year'),pl.col('Total')
 ).sort(
   pl.col('Total').abs(),descending=True
-).head(5)
+).head(1)
 ```
 
 
@@ -100,12 +90,7 @@ df.filter(
 
 __What year did your name hit its peak? How many babies were named your name in that year?__
 
-The year my name hit its peak was in 1931 and 1933 with a total of 25 babies named Talmage in each of those years.
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+My name hit its peak in both 1931 and 1933 with a total of 25 babies named Talmage in each of those two years.
 
 ```{python}
 # Q3
@@ -120,7 +105,7 @@ df.filter(
   pl.col('name'),pl.col('year'),pl.col('Total')
 ).sort(
   pl.col('Total').abs(),descending=True
-).head(5)
+).head(2)
 ```
 
 
@@ -128,12 +113,7 @@ df.filter(
 
 __In the most recent year, what was the most common female name in Utah?__ 
 
-The most common female name in Utah in 2024 (the most recent year with data) was Olivia with a total of 215 babies named Olivia in that year within the state of Utah.
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+The most common name genrally accepted as female in Utah in the most recent year with data was Olivia.
 
 ```{python}
 # Q5
@@ -150,7 +130,7 @@ df.filter(
   pl.col('UT')
 ).sort(
   pl.col('UT').abs(),descending=True
-).head(7)
+).head(6)
 ```
 
 
