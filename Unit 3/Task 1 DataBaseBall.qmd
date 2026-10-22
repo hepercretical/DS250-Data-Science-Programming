@@ -1,7 +1,7 @@
 ---
 title: "Client Report - Baseball Database"
 subtitle: "Unit 3 Task 1"
-author: "[STUDENT NAME]"
+author: "Talmage Trebilcock"
 format:
   html:
     self-contained: true
@@ -62,19 +62,34 @@ results
 
 __Use the provided code above to read in the batting table. Then, with Python Polars manipulate the 'results' dataframe to calculate the number of at bats and the batting average for each year a player played. Filter the data frame to only include players with at least 10 at bats that year. Sort the dataframe from highest batting average to lowest, and then by playerid alphabetically. Show the top 5 results in your report.__
 
-Note: A batting average is meant to measure how often a player puts the ball in play and gets to base safely. For this task, use a simplified version of batting average defined as the sum of hits (labeled 'H') divided by number of at bats (labeled 'AB').
-
-_type your results and analysis here_
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+The table results in the 5 highest batting averages in a year for "aaronha01". The table would continue down for each player sorted by their years with the highest batting averages first.
 
 ```{python}
-# Include and execute your code here
+import polars as pl
+import numpy as np
+import sqlite3
+from lets_plot import *
 
+LetsPlot.setup_html(isolated_frame=True)
 
+con = sqlite3.connect("lahmansbaseballdb.sqlite")
+
+q = """
+    SELECT *
+    FROM batting
+    """
+results = pl.read_database(q, con, infer_schema_length=None) 
+
+df_at_bats_and_average = (results
+  .group_by(["playerID", "yearID"]).agg(pl.col("AB").sum().alias("total_AB"), pl.col("H").sum().alias("total_H"))
+  .with_columns(((pl.col("total_H") / pl.col("total_AB")) * 100).alias("BA"))
+  .filter(pl.col("total_AB") > 10)
+  .sort(pl.col("BA"), descending=True)
+  .sort(pl.col("playerID"), descending=False)
+  .select("playerID", "yearID", "BA")
+)
+
+df_at_bats_and_average.head(5)
 ```
 
 
@@ -82,19 +97,32 @@ _AI use reflection_
 
 __Use the provided code above to read in the batting table. Then, with Python Polars manipulate the 'results' dataframe to calculate the batting average for each player over their entire career (all years combined). Only include players with at least 100 at bats over their entire career. Sort the dataframe from highest batting average to lowest, and then by playerid alphabetically. Show the top 5 results in your report.__ 
 
-Note: A batting average is meant to measure how often a player puts the ball in play and gets to base safely. For this task, use a simplified version of batting average defined as the sum of hits (labeled 'H') divided by number of at bats (labeled 'AB').
-
-_type your results and analysis here_
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+The table shows the batting average of players in alphabetacle order and sorted by highest batting average. The first 5 entries include players who appear first in the alphabet along with their batting average.
 
 ```{python}
-# Include and execute your code here
+import polars as pl
+import numpy as np
+import sqlite3
+from lets_plot import *
 
+LetsPlot.setup_html(isolated_frame=True)
 
+con = sqlite3.connect("lahmansbaseballdb.sqlite")
+
+q = """
+    SELECT *
+    FROM batting
+    """
+results = pl.read_database(q, con, infer_schema_length=None) 
+
+df_at_bats_and_average = (results
+  .group_by("playerID").agg(pl.col("AB").sum().alias("total_AB"), pl.col("H").sum().alias("total_H"))
+  .with_columns(((pl.col("total_H") / pl.col("total_AB")) * 100).alias("BA"))
+  .filter(pl.col("total_AB") > 100)
+  .sort(pl.col("BA"), descending=True)
+  .sort(pl.col("playerID"), descending=False)
+  .select("playerID", "BA")
+)
+
+df_at_bats_and_average.head(5)
 ```
-
-
