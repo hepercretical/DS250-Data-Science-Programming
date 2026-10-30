@@ -1,7 +1,7 @@
 ---
 title: "Client Report - Joins"
 subtitle: "Unit 3 Task 3"
-author: "[STUDENT NAME]"
+author: "Talmage Trebilcock"
 format:
   html:
     self-contained: true
@@ -48,35 +48,74 @@ con = sqlite3.connect(sqlite_file)
 
 __Write an SQL query that pulls in the the salaries table and the collegeplaying table (and any other tables you might need) and store them in polars dataframes. In Python Polars, combine the dataframes to create a list of baseball players who attended BYU-Idaho. The new table should contain five columns: playerID, schoolID, salary, yearID and teamID associated with each salary.__
 
-_type your results and analysis here_
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+The table includes all players who attended BYU-I.
 
 ```{python}
-# Include and execute your code here
+import polars as pl
+import numpy as np
+import sqlite3
 
+sqlite_file = 'lahmansbaseballdb.sqlite'
+con = sqlite3.connect(sqlite_file)
 
+salaries = """
+  SELECT *
+  FROM salaries
+  """
+
+dfsalaries = pl.read_database(salaries, con)
+
+collegeplaying = """
+  SELECT *
+  FROM collegeplaying
+  """
+
+dfcollegeplaying = pl.read_database(collegeplaying, con)
+
+result = (dfsalaries
+  .join(dfcollegeplaying, on="playerID")
+  .select("playerID", "schoolID", "salary", "yearID", "teamID")
+  .filter(pl.col("schoolID") == "idbyuid")
+)
+
+result
 ```
 
 
 ## QUESTION 2
 
-1. Pick any two baseball teams and compare them using a metric of your choice (average salary, home runs, number of wins, etc). Be creative! Write an SQL query to read in the table(s) you need, then use polars to manipulate the data. Finally, make a graph using Lets-Plot to visualize the comparison. What do you learn?
+1. Pick any two baseball teams and compare them using a metric of your choice (average salary, home runs, number of wins, etc). Be creative! Write a SQL query to read in the table(s) you need, then use polars to manipulate the data. Finally, make a graph using Lets-Plot to visualize the comparison. What do you learn?
 
 _Describe your results and analysis here_
 
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
-
 ```{python}
-# Include and execute your code here
+import polars as pl
+import numpy as np
+import sqlite3
+from lets_plot import *
 
+LetsPlot.setup_html(isolated_frame=True)
+ 
+sqlite_file = 'lahmansbaseballdb.sqlite'
+con = sqlite3.connect(sqlite_file)
 
+halloffame = """
+  SELECT *
+  FROM halloffame
+  """
+
+dfhalloffame = pl.read_database(halloffame, con)
+
+appearances = """
+  SELECT *
+  FROM appearances
+  """
+
+dfappearances = pl.read_database(appearances, con)
+
+result = (dfhalloffame
+  .join(dfappearances, on=["playerID", "yearID"], how="inner")
+  )
+
+result
 ```
-
-
