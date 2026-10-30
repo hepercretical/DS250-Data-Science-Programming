@@ -86,7 +86,9 @@ result
 
 1. Pick any two baseball teams and compare them using a metric of your choice (average salary, home runs, number of wins, etc). Be creative! Write a SQL query to read in the table(s) you need, then use polars to manipulate the data. Finally, make a graph using Lets-Plot to visualize the comparison. What do you learn?
 
-_Describe your results and analysis here_
+This table plots the cumulative number of players for the Atlanta Braves and the Detroit Tigers  who have been inducted into the Hall of Fame. From the graph you can clearly see that the Detroit Tigers have always had more players who have ever been in the hall of fame than the Atlanta Braves. The Detroit Tigers had their first Hall of Fame player in 1936 while the Atlanta Braves only got their first Hall of Fame player in 1978.
+
+During this I learned how to plot cumulative values across a plot which is a bit difficult because you have to manipulate the data a bit more.
 
 ```{python}
 import polars as pl
@@ -100,22 +102,51 @@ sqlite_file = 'lahmansbaseballdb.sqlite'
 con = sqlite3.connect(sqlite_file)
 
 halloffame = """
-  SELECT *
+  SELECT playerID,
+         inducted,
+         yearid AS yearID
   FROM halloffame
   """
 
 dfhalloffame = pl.read_database(halloffame, con)
 
 appearances = """
-  SELECT *
+  SELECT playerID, 
+         teamID
   FROM appearances
   """
 
 dfappearances = pl.read_database(appearances, con)
 
-result = (dfhalloffame
-  .join(dfappearances, on=["playerID", "yearID"], how="inner")
+results = (dfhalloffame
+  .join(dfappearances, on="playerID", how="inner")
+  .filter(pl.col("inducted") == "Y")
+  .group_by(["teamID", "yearID"]).agg(pl.col("playerID").n_unique().alias("hofp"))
   )
 
-result
+cumulative_results = (results
+  .filter(pl.col("teamID").is_in(["ATL", "DET"]))
+  .sort(["teamID", "yearID"])
+  .with_columns(
+    pl.col("hofp")
+      .cum_sum()
+      .over("teamID")
+      .alias("cumulative_total")
+  )
+)
+
+(ggplot(
+  cumulative_results.to_dict(as_series = False),
+    aes(x = "yearID", y = "cumulative_total", color = "teamID")
+    ) + 
+    geom_line() + 
+    scale_x_continuous(format = "d") +
+    labs(
+      title = "Cumulative Hall of Fame Players",
+      subtitle = "Comparing the Atlanta Braves and Detroit Tigers",
+      x = "Year",
+      y = "Hall of Fame Players",
+      color = "Team"
+    )
+)
 ```
