@@ -1,0 +1,189 @@
+---
+title: "Client Report - Longevity"
+subtitle: "Unit 3 Stretch"
+author: "Talmage Trebilcock"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+import polars as pl
+import numpy as np
+import sqlite3
+```
+
+
+```{python}
+# Learn morea about Code Cells: https://quarto.org/docs/reference/cells/cells-jupyter.html
+
+# Include and execute your code here
+sqlite_file = 'lahmansbaseballdb.sqlite'
+# this file must be in the same location as your .qmd or .py file
+con = sqlite3.connect(sqlite_file)
+```
+
+## QUESTION 1
+
+__Write an SQL query that pulls the tables you need into a polars dataframe using nothing more than SELECT and FROM statements. Then, use python polars to identify the top 10 players with the longest Major League Baseball careers. Include their: playerID, first_name, last_name, career_length__
+
+
+```{python}
+import polars as pl
+import numpy as np
+import sqlite3
+
+sqlite_file = 'lahmansbaseballdb.sqlite'
+con = sqlite3.connect(sqlite_file)
+
+careersquery = """
+  SELECT playerID,
+         nameFirst AS first_name,
+         nameLast AS last_name,
+         debut_date,
+         finalgame_date
+  FROM people
+"""
+
+careers = pl.read_database(careersquery, con)
+
+result = (
+    careers
+    .with_columns(
+        pl.col("debut_date", "finalgame_date").str.to_date("%Y-%m-%d")
+    )
+    .with_columns(
+        (
+            ((pl.col("finalgame_date") - pl.col("debut_date")).dt.total_days() / 365.25).ceil()
+        ).alias("career_length")
+    )
+    .drop_nulls("career_length")
+    .sort("career_length", descending=True)
+    .select("playerID", "first_name", "last_name", "career_length")
+)
+
+result.head(10)
+```
+
+
+## QUESTION 2
+
+__Write an SQL query that pulls the tables you need into a polars dataframe. Then, use python polars to create a summary table showing the average salary for each position (e.g., pitcher, catcher, outfielder). Position information can be found in the fielding table in the POS column.__
+__Include the following columns:__
+
+position
+average_salary
+total_players
+highest_salary
+The highest_salary column should display the highest salary ever earned by a player in that position.
+
+__Additionally, add a new column to the summary table you just created to label the average salary:__
+
+If the average salary is above $3 million, categorize it as “High Salary.”
+If the average salary is between $2 million and $3 million, categorize it as “Medium Salary.”
+Otherwise, categorize it as “Low Salary.”
+Order the table by average salary in descending order.
+
+__Hint: Beware, it is common for a player to play multiple positions in a single year. For this analysis, each player’s salary should only be counted toward one position in a given year. You get to determine which position to count it towards. Explain how you decided which position a player’s salary should be counted toward in those situations, and why that is a good approach.__
+
+First base is the only position that has a High average salary of over 3 million $. Positions for each player were determined based on how many times in a year that the particular player actually played in that position. This means that if a player played in multiple positions throughout a year, their salary would be counted towards the avereage for the position that they played the most games in.
+
+```{python}
+import polars as pl
+import numpy as np
+import sqlite3
+from lets_plot import *
+
+LetsPlot.setup_html(isolated_frame=True)
+ 
+sqlite_file = 'lahmansbaseballdb.sqlite'
+con = sqlite3.connect(sqlite_file)
+
+query_fielding = """
+  SELECT playerID,
+         yearID,
+         POS,
+         G
+  FROM fielding
+  """
+
+df_fielding = pl.read_database(query_fielding, con)
+
+query_salaries = """
+  SELECT playerID,
+         yearID,
+         salary
+  FROM salaries
+  """
+
+df_salaries = pl.read_database(query_salaries, con)
+
+ # Figures out how many games a player has played in each position.
+total_at_position = (df_fielding
+  .group_by(["playerID", "yearID", "POS"])
+    .agg(
+      pl.col("G").sum().alias("total_games_in_position")
+    )
+)
+
+ # Sorts the data so a player will be sorted by the positin that they played the most.
+usual_position = (total_at_position
+  .sort(["playerID", "yearID", "total_games_in_position", "POS"], descending=[False, False, True, False])
+  .unique(subset = ["playerID", "yearID"], keep = "first")
+  .select(["playerID", "yearID", "POS"])
+)
+
+ # Cleans then calculates salary.
+salary_year = (df_salaries
+  .drop_nulls("salary")
+  .group_by(["playerID", "yearID"])
+  .agg(pl.col("salary").sum().alias("salary"))
+)
+
+ # Joins the salary and position data.
+player_years = (salary_year
+  .join(usual_position, 
+    on = ["playerID", "yearID"],
+    how = "inner",
+    validate = "1:1")
+)
+
+ # Introduces logic to the joined data to calculate the average salary for each position.
+results = (player_years
+  .group_by("POS")
+  .agg(
+    pl.col("salary").mean().alias("average_salary"),
+    pl.col("playerID").n_unique().alias("total_players"),
+    pl.col("salary").max().alias("highest_salary")
+  )
+  .with_columns(
+    pl.when(pl.col("average_salary") > 3_000_000)
+      .then(pl.lit("High Salary"))
+    .when(pl.col("average_salary") >= 2_000_000)
+      .then(pl.lit("Medium Salary"))
+    .otherwise(pl.lit("Low Salary"))
+    .alias("salary_category")
+  )
+  .sort("average_salary", descending = True)
+)
+
+results
+```
