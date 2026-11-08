@@ -1,7 +1,7 @@
 ---
 title: "Client Report - Can You Predict That?"
 subtitle: "Unit 4 Task 1"
-author: "[STUDENT NAME]"
+author: "Talmage"
 format:
   html:
     self-contained: true
@@ -27,6 +27,7 @@ execute:
 
 ```{python}
 import polars as pl
+import pandas as pd
 import numpy as np
 from lets_plot import *
 from sklearn.model_selection import train_test_split
@@ -40,35 +41,121 @@ LetsPlot.setup_html(isolated_frame=True)
 
 ```{python}
 # import your data here using polars and the URL
-
-
+df = pl.read_csv("dwellings_ml.csv")
 ```
 
 ## QUESTION
 
 1. __Take time to get to know your data.__ Based on some initial exploration, identify 3 variables in the dataset you think will have strong predictive ability for determining if a house was built before 1980. Explain/justify the reasoning behind your guesses (for example with plots).
 
-_type your write-up and analysis here_
+These three plots shows the difference in data between houses that were build after 1980 (indicated by a 0) and houses that were build before 1980 (indicated by a 1). It is very typical for a house that is build before 1980 to have only 1 story, with few outliers. It is also typical for a house build before 1980 to have fewerbathrooms, between 1 and 2 typically. And finally, homes build before 1980 tend to have a smaller average living space than those which were built after 1980.
 
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+These three variables together can help to predict whether a house was build before or after 1980 with a bit more accuracy when all used together.
 
 ```{python}
-# Optional: code you used to get to know your data
+import polars as pl
+import numpy as np
+from lets_plot import *
 
+LetsPlot.setup_html(isolated_frame=True)
 
+df = pl.read_csv("dwellings_ml.csv")
+
+# Create a boxplot for the number of stories in a house before and after 1980.
+
+plot_stories = df.select(["before1980", "stories"]).to_pandas()
+
+stories_plot = (ggplot(plot_stories, aes(x="before1980", y="stories")) +
+  geom_boxplot() +
+  labs(
+      title="Number of Stories by Construction Period",
+      x="Before 1980 indicator",
+      y="Number of stories"
+  )
+)
+
+# Create a boxplot for the number of bathrooms in a house before and after 1980.
+
+plot_bath = df.select(["before1980", "numbaths"]).to_pandas()
+
+bath_plot = (ggplot(plot_bath, aes(x="before1980", y="numbaths")) + 
+  geom_boxplot() + 
+  labs(
+    title="Number of Bathrooms by Construction Period",
+    x="Before 1980 indicator",
+    y="Number of bathrooms"
+  )
+)
+
+# Create a boxplot for the living area of a house before and after 1980.
+
+plot_area = df.select(["before1980", "livearea"]).to_pandas()
+
+area_plot = (ggplot(plot_area, aes(x = as_discrete("before1980"), y = "livearea")) + 
+  geom_boxplot() +
+  labs(
+    title="Living Area by Construction Period",
+    x = "Before 1980 indicator",
+    y = "Living area in square feet"
+  )
+)
+
+# Display all three boxplots.
+
+display(gggrid([stories_plot, bath_plot, area_plot], ncol=3))
 ```
 
-1. __Build a classification model labeling houses as being built “before 1980” or “during or after 1980”.__ Your goal is to reach or exceed 90% accuracy. Report your final model choice and any other model parameters you may have tweaked (train-test split ratio, tuning parameters, etc).  
+2. __Build a classification model labeling houses as being built “before 1980” or “during or after 1980”.__ Your goal is to reach or exceed 90% accuracy. Report your final model choice and any other model parameters you may have tweaked (train-test split ratio, tuning parameters, etc). 
 
-_type your write-up and analysis here_
+I used a Random Forest classifer to predict if a house was built before or after 1980. Using the 3 variables identified in question 1 along with the variables for homes with a basement, quality category C and fi the home had an attached garage, I was able to reach an accuracy of 90%.
+
+To test the model, I split the data into 80% and predicted on the remaining 20% to test the model. Additionally, the modal had 200 trees, a max depth of 15, and a minimum size of 2 per leaf. The results are also expected to be repeatable to ensure that the model is working as expected.
 
 ```{python}
-# Include and execute your code here
-# Don't forget, you need another import statement to import the desired ML model from sklearn
+import polars as pl
+import numpy as np
 
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
 
+from pathlib import Path
+
+homes = pl.read_csv("dwellings_ml.csv")
+
+# Uses the three variables from Question 1, along with basement, quality_C and gartype_Att to have enough data to predict more accurately.
+
+predictors = ["stories", "numbaths", "livearea", "basement", "quality_C", "gartype_Att"]
+
+x = homes.select(predictors).to_numpy()
+y = homes["before1980"].to_numpy()
+
+# Reliablty trains on 80% of the homes and tests on the remaining 20%.
+
+x_train, x_test, y_train, y_test = train_test_split(
+    x, 
+    y,
+    test_size = 0.20,
+    random_state = 42,
+    stratify = y
+)
+
+# The Random Forest combines predictions from many decision trees.
+
+model = RandomForestClassifier(
+    n_estimators = 200,
+    max_depth = 15,
+    min_samples_leaf = 2,
+    random_state = 42,
+    n_jobs = -1
+)
+
+model.fit(x_train, y_train)
+
+# Compares predicted values to actual values of the remaining 20% of homes.
+
+predictions = model.predict(x_test)
+accuracy = metrics.accuracy_score(y_test, predictions)
+
+print(f"Test accuracy: {accuracy:.2%}")
 ```
-

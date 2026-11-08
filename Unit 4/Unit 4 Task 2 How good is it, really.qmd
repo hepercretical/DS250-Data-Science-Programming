@@ -1,7 +1,7 @@
 ---
 title: "Client Report -How good is it, really?"
 subtitle: "Unit 4 Task 2"
-author: "[STUDENT NAME]"
+author: "Talmage Trebilcock"
 format:
   html:
     self-contained: true
@@ -39,25 +39,63 @@ LetsPlot.setup_html(isolated_frame=True)
 
 ```{python}
 # import your data here using polars and the URL
-
-
+df = pl.read_csv("dwellings_ml.csv")
 ```
 
 ## QUESTION 1
 
 1. __Describe the quality of your classification model using 2-3 different evaluation metrics.__ You also need to explain how to define/interpret each of the evaluation metrics you use.  
 
-_type your write-up and analysis here_
+I evaluated the Random Forest model that I used in Task 1 using the same six variables, settings, and s80/20 train-test split. The model was trained on 18,330 homes and evaluated on the remaining 4,583 homes. A positive prediction (1) means the home was built before 1980. It was 90% accurate, with a precision of 91.9% and a recall of 92.2%.
 
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+Accuracy: 90.03%
+Accuracy is how many correct predictions are made divided by total number of predictions. It is the exact % of predictions that the model got right. This shows generally how well the model is at predicting if a home was build before or after 1980.
+
+Precision: 91.89% 
+Precision is how many homes that were correctly predicted to be before 1980 divided by the total number of homes that actually predicted to be built before 1980. This shows what % of the homes that the model predicted to be before 1980 were actually correct.
+
+Recall: 92.18%
+Recall is the number of homes correctly predicted to be built before 1980 divided by all of the actual homes that were build before 1980. This is important because of the importance of not missing homes that may contain asbestos. It shows that the model only correctly identified 92.18% of homes that may be a risk.
 
 ```{python}
-# Include and execute your code here
-# Don't forget, you need another import statement to import the desired ML model from sklearn
+import polars as pl
+import numpy as np
 
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
+
+homes = pl.read_csv("dwellings_ml.csv")
+
+predictors = ["stories", "numbaths", "livearea", "basement", "quality_C", "gartype_Att"]
+x = homes.select(predictors).to_numpy()
+y = homes["before1980"].to_numpy()
+
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size = 0.20, random_state = 42, stratify = y
+)
+
+model = RandomForestClassifier(
+    n_estimators = 200,
+    max_depth = 15,
+    min_samples_leaf = 2,
+    random_state = 42,
+    n_jobs = -1
+)
+
+model.fit(x_train, y_train)
+predictions = model.predict(x_test)
+
+# Calculate and print evaluation metrics.
+accuracy = metrics.accuracy_score(y_test, predictions)
+precision = metrics.precision_score(y_test, predictions, pos_label = 1, zero_division = 0)
+recall = metrics.recall_score(y_test, predictions, pos_label = 1, zero_division = 0)
+
+
+print(f"Training homes: {len(y_train):,}; test homes: {len(y_test):,}")
+print(f"Accuracy: {accuracy:.2%}")
+print(f"Precision: {precision:.2%}")
+print(f"Recall: {recall:.2%}")
 ```
 
 
@@ -65,16 +103,81 @@ _AI use reflection_
 
 1. __Justify your classification model by discussing the most important features selected by your model.__ This discussion should include a plot of permutation importance values for the most important features. Were there any features you thought would be importance but weren't?
 
-_type your write-up and analysis here_
+The chart shows the importance of each predictor in the model. This is tested by shuffeling the values and testing to see how much the accuracy decreases when a certain value is shuffled. The more that the accuracy decreases, the more important that value is as a predictor.
 
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+Stories was the most important with a decrease of around 15%
+Bathrooms was second with 11.9%
+Basements was third with 11.2%
+Garage was 4th with 11.1%
+Quality C was 5th with 9%
+Living Area was last with only around 7%
+
+While all of the values were important, especially to reach 90% accuracy, I was suprised that living area was actually one of the least important predictors since it was one of the original 3 that I chose for my predictors in Task 1 and I had assumed that houses increasing in size was more of an indicator.
+
+The values that I chose are justified because each affects the results by over 5% with most haveing more than 10% decrease in accuracy when shuffled.
 
 ```{python}
-# Include and execute your code here
+import polars as pl
+import numpy as np
+from lets_plot import *
 
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.inspection import permutation_importance
+
+from pathlib import Path
+from IPython.display import display
+
+LetsPlot.setup_html(isolated_frame=True)
+
+homes = pl.read_csv("dwellings_ml.csv")
+
+predictors = ["stories", "numbaths", "livearea", "basement", "quality_C", "gartype_Att"]
+x = homes.select(predictors).to_numpy()
+y = homes["before1980"].to_numpy()
+
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size = 0.20, random_state = 42, stratify = y
+)
+
+model = RandomForestClassifier(
+    n_estimators = 200,
+    max_depth = 15,
+    min_samples_leaf = 2,
+    random_state = 42,
+    n_jobs = -1
+)
+
+model.fit(x_train, y_train)
+permutation_result = permutation_importance(
+    model,
+    x_test,
+    y_test,
+    scoring="accuracy",
+    n_repeats=20,
+    random_state=42,
+    n_jobs=1
+)
+
+importance_df = pl.DataFrame({
+    "feature": predictors,
+    "importance_pp": permutation_result.importances_mean * 100,
+    "std_pp": permutation_result.importances_std * 100
+}).with_columns(
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("lower"),
+    (pl.col("importance_pp") + pl.col("std_pp")).alias("upper")
+).sort("importance_pp", descending=True)
+
+(ggplot(importance_df.to_dict(as_series=False), aes(x="feature", y="importance_pp")) + 
+    geom_bar(stat="identity", fill="#2878A0") + 
+    labs(
+        title = "Permutation importance on the test data",
+        subtitle = "Average accuracy decrease across 20 shuffles",
+        x = "Predictor",
+        y = "Decrease in accuracy (percentage points)"
+    )
+)
 
 ```
 
@@ -82,15 +185,82 @@ _AI use reflection_
 
 1. __For the 3 most important features, explain their relationship to the target variable. Use a plot to illustrate the relationship.__ (3 plots minimum)
 
-_type your write-up and analysis here_
+The three most important features from Question 2 were stories, bathrooms, and basement area. These three plots compare all labeled homes by construction period for each feature.
 
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+Plot 1: Stories
+Homes built before 1980 typically only have 1 story with a few outliers. Meanwhile, 50% of homes build after 1980 have 1 or 2 stories with some even reaching 3 without being an outlier. This difference helps explain why stories was the most important predictor, since almost any home with more than 1 story is much less likely to have been built before 1980.
+
+Plot 2: Bathrooms
+Simmilarly to stories, homes build before 1980 had a median of 2 bathrooms with 50% of homes having 1 or 2 bathrooms. On the other hand, homes build after 1980 have a median of 3 bathrooms with 50% of homes having between 2 to 4 bathrooms. This difference helps even more to determine if a home was built before or after 1980 since if a home has 3 or more bathrooms, it is much more likely to have been built after 1980.
+
+
+Plot 3: Basement area
+Basement area is one that seems to have the least obvious relationship. Homes build before 1980 have a median basement size of 411 square feet with 50% of homes having between 0 to 922 square feet of basement. On the other hand, homes built after 19080 have a median basement size of 375 square feet, which is slightly less than the older homes. 50% of newer homes range from a basement of 0 to 1063 square feet. While it might be tempting to think that since the median of basement area is slightly higher for older homes, if a home has a basement, it is likely to be larger in a newer home since the 50% covers a much higher range as well as there being many high outliers for the newer homes with large basements. This means that if a house tends to have a larger basement, especially in relation to the other 2 features, it is much more likely to be a newer home.
 
 ```{python}
-# Include and execute your code here
+import polars as pl
+import numpy as np
+from lets_plot import *
 
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
 
+from IPython.display import display
+from pathlib import Path
+
+LetsPlot.setup_html(isolated_frame=True)
+
+homes = pl.read_csv("dwellings_ml.csv")
+
+plot_data = homes.with_columns(
+    pl.when(pl.col("before1980") == 1)
+        .then(pl.lit("Before 1980"))
+        .otherwise(pl.lit("During or after 1980"))
+        .alias("construction_period")
+)
+
+period_order = ["Before 1980", "During or after 1980"]
+
+# Stories were the highest ranking from question 2.
+plot_stories = (ggplot(
+    plot_data.select(["construction_period", "stories"]).to_dict(as_series=False),
+    aes(x="construction_period", y="stories")) + 
+    geom_boxplot(fill="#2878A0", alpha=0.65) + 
+    scale_x_discrete(limits=period_order) + 
+    labs(
+        title="Plot 1: Stories by construction period",
+        x="Construction period", 
+        y="Number of stories"
+    )
+)
+
+# Bathrooms were the 2nd highest ranking from question 2.
+plot_bathrooms = (ggplot(
+    plot_data.select(["construction_period", "numbaths"]).to_dict(as_series=False),
+    aes(x="construction_period", y="numbaths")) + 
+    geom_boxplot(fill="#2878A0", alpha=0.65) + 
+    scale_x_discrete(limits=period_order) + 
+    labs(
+        title="Plot 2: Bathrooms by construction period",
+        x="Construction period", 
+        y="Number of bathrooms"
+    )
+)
+
+# Basement area was the 3rd highest ranking from question 2.
+plot_basement = (ggplot(
+    plot_data.select(["construction_period", "basement"]).to_dict(as_series=False),
+    aes(x="construction_period", y="basement")) + 
+    geom_boxplot(fill="#2878A0", alpha=0.65) + 
+    scale_x_discrete(limits=period_order) + 
+    labs(
+        title="Plot 3: Basement area by construction period",
+        x="Construction period", 
+        y="Basement area (square feet)"
+    )
+)
+
+display(plot_stories)
+display(plot_bathrooms)
+display(plot_basement)
 ```
