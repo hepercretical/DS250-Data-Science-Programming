@@ -1,0 +1,156 @@
+---
+title: "Client Report - Show me!"
+subtitle: "Unit 4 Task 3"
+author: "Talmage Trebilcock"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+
+---
+
+```{python}
+import polars as pl
+import numpy as np
+from lets_plot import *
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+# add the additional libraries you need to import for ML here
+
+LetsPlot.setup_html(isolated_frame=True)
+```
+
+```{python}
+# import your data here using polars and the URL
+df = pl.read_csv("dwellings_ml.csv")
+```
+
+## QUESTION 1
+
+1. __Repeat the classification exercise using 2 different algorithms/models. Explain the differences between the 3 models__ (your original one, and the 2 new ones for this task).
+
+When using a RandomForestClassifier, a GaussianNB, and SVC models, each model came back with different accuracies, precisions, and recalls.
+
+The RandomForestClassifier was the highest performer overall with all 3 stats being over 90%.
+
+The GaussianNB model was the 2nd best having an accuracy and precision of around 77% and a recall of around 85%
+
+The SVC model ended up being the worst of the three with an accuracy and precision of around 72% and a recall of around 81%.
+
+```{python}
+ # Include and execute your code here
+import polars as pl
+import numpy as np
+from lets_plot import *
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+
+homes = pl.read_csv("dwellings_ml.csv")
+
+features = homes.select("stories", "numbaths", "basement", "livearea", "gartype_Att", "quality_C")
+targets = homes.select("before1980")
+
+train_data, test_data, train_targets, test_targets = train_test_split(features, targets, test_size = .3)
+
+ # Uses the same RandomForestClassifier model as before on the data.
+ # Then calculates the accuracy, precision, and recall of the model.
+
+RFC_classifier = RandomForestClassifier()
+RFC_classifier.fit(train_data, train_targets)
+RFC_targets_predicted = RFC_classifier.predict(test_data)
+
+RFC_accuracy = metrics.accuracy_score(test_targets, RFC_targets_predicted)
+RFC_precision = metrics.accuracy_score(test_targets, RFC_targets_predicted)
+RFC_recall = metrics.recall_score(test_targets, RFC_targets_predicted)
+
+ # Uses the GaussianNB model on the same data.
+ # Then calculates the accuracy, precision, and recall of the model.
+
+GNB_classifier = GaussianNB()
+GNB_classifier.fit(train_data, train_targets)
+GNB_targets_predicted = GNB_classifier.predict(test_data)
+
+GNB_accuracy = metrics.accuracy_score(test_targets, GNB_targets_predicted)
+GNB_precision = metrics.accuracy_score(test_targets, GNB_targets_predicted)
+GNB_recall = metrics.recall_score(test_targets, GNB_targets_predicted)
+
+ # Uses the SVC model on the same data.
+ # Then calculates the accuracy, precision, and recall of the model.
+
+SVC_classifier = SVC()
+SVC_classifier.fit(train_data, train_targets)
+SVC_targets_predicted = SVC_classifier.predict(test_data)
+
+SVC_accuracy = metrics.accuracy_score(test_targets, SVC_targets_predicted)
+SVC_precision = metrics.accuracy_score(test_targets, SVC_targets_predicted)
+SVC_recall = metrics.recall_score(test_targets, SVC_targets_predicted)
+
+ # Prints the results of the 3 different models to be compared with eachother.
+print(f"Training homes: {len(train_targets)}")
+print(f"Test homes: {len(test_targets)}")
+
+print()
+
+print("| --- RandomForestClassifier --- |")
+print(f"Accuracy: {RFC_accuracy:.2%}")
+print(f"Precision: {RFC_precision:.2%}")
+print(f"Recall: {RFC_recall:.2%}")
+
+print()
+
+print("| --- GaussianNB --- |")
+print(f"Accuracy: {GNB_accuracy:.2%}")
+print(f"Precision: {GNB_precision:.2%}")
+print(f"Recall: {GNB_recall:.2%}")
+
+print("")
+
+print("| --- SVC --- |")
+print(f"Accuracy: {SVC_accuracy:.2%}")
+print(f"Precision: {SVC_precision:.2%}")
+print(f"Recall: {SVC_recall:.2%}")
+```
+
+## QUESTION 2
+
+1. For each model (your original one, and the 2 new ones for this task), display the classification report and the permutation importances for the most important features.  Discuss which model you would recommend to the Client and why.
+
+_type your write-up and analysis here_
+
+_AI use reflection_
+**Link** to the original chat:
+**The Process** How exactly did you use the tool?
+**The Impact**  How did using AI impact your learning?
+
+```{python}
+# Include and execute your code here
+import polars as pl
+import numpy as np
+from lets_plot import *
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+# add the additional libraries you need to import for ML here
+
+LetsPlot.setup_html(isolated_frame=True)
+
+df = pl.read_csv("dwellings_ml.csv")
+```
