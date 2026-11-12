@@ -45,19 +45,20 @@ df = pl.read_csv("dwellings_ml.csv")
 
 1. __Repeat the classification exercise using 2 different algorithms/models. Explain the differences between the 3 models__ (your original one, and the 2 new ones for this task).
 
-When using a RandomForestClassifier, a GaussianNB, and SVC models, each model came back with different accuracies, precisions, and recalls.
+When using a RandomForestClassifier, a GaussianNB, and SVC models, each model came back with different accuracies.
 
-The RandomForestClassifier was the highest performer overall with all 3 stats being over 90%.
+The RandomForestClassifier was the highest performer with an accuracy over 90%.
 
-The GaussianNB model was the 2nd best having an accuracy and precision of around 77% and a recall of around 85%
+The GaussianNB model was the 2nd best having an accuracy of around 77%
 
-The SVC model ended up being the worst of the three with an accuracy and precision of around 72% and a recall of around 81%.
+The SVC model ended up being the worst of the three with an accuracy of around 72%
 
 ```{python}
  # Include and execute your code here
 import polars as pl
 import numpy as np
 from lets_plot import *
+
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.ensemble import RandomForestClassifier
@@ -66,8 +67,11 @@ from sklearn.svm import SVC
 
 homes = pl.read_csv("dwellings_ml.csv")
 
-features = homes.select("stories", "numbaths", "basement", "livearea", "gartype_Att", "quality_C")
-targets = homes.select("before1980")
+
+predictors = ["stories", "numbaths", "livearea", "basement", "quality_C", "gartype_Att"]
+
+features = homes.select(predictors).to_numpy()
+targets = homes["before1980"].to_numpy()
 
 train_data, test_data, train_targets, test_targets = train_test_split(features, targets, test_size = .3)
 
@@ -75,34 +79,34 @@ train_data, test_data, train_targets, test_targets = train_test_split(features, 
  # Then calculates the accuracy, precision, and recall of the model.
 
 RFC_classifier = RandomForestClassifier()
+
 RFC_classifier.fit(train_data, train_targets)
+
 RFC_targets_predicted = RFC_classifier.predict(test_data)
 
 RFC_accuracy = metrics.accuracy_score(test_targets, RFC_targets_predicted)
-RFC_precision = metrics.accuracy_score(test_targets, RFC_targets_predicted)
-RFC_recall = metrics.recall_score(test_targets, RFC_targets_predicted)
 
  # Uses the GaussianNB model on the same data.
  # Then calculates the accuracy, precision, and recall of the model.
 
 GNB_classifier = GaussianNB()
+
 GNB_classifier.fit(train_data, train_targets)
+
 GNB_targets_predicted = GNB_classifier.predict(test_data)
 
 GNB_accuracy = metrics.accuracy_score(test_targets, GNB_targets_predicted)
-GNB_precision = metrics.accuracy_score(test_targets, GNB_targets_predicted)
-GNB_recall = metrics.recall_score(test_targets, GNB_targets_predicted)
 
  # Uses the SVC model on the same data.
  # Then calculates the accuracy, precision, and recall of the model.
 
 SVC_classifier = SVC()
+
 SVC_classifier.fit(train_data, train_targets)
+
 SVC_targets_predicted = SVC_classifier.predict(test_data)
 
 SVC_accuracy = metrics.accuracy_score(test_targets, SVC_targets_predicted)
-SVC_precision = metrics.accuracy_score(test_targets, SVC_targets_predicted)
-SVC_recall = metrics.recall_score(test_targets, SVC_targets_predicted)
 
  # Prints the results of the 3 different models to be compared with eachother.
 print(f"Training homes: {len(train_targets)}")
@@ -112,45 +116,223 @@ print()
 
 print("| --- RandomForestClassifier --- |")
 print(f"Accuracy: {RFC_accuracy:.2%}")
-print(f"Precision: {RFC_precision:.2%}")
-print(f"Recall: {RFC_recall:.2%}")
 
 print()
 
 print("| --- GaussianNB --- |")
 print(f"Accuracy: {GNB_accuracy:.2%}")
-print(f"Precision: {GNB_precision:.2%}")
-print(f"Recall: {GNB_recall:.2%}")
 
 print("")
 
 print("| --- SVC --- |")
 print(f"Accuracy: {SVC_accuracy:.2%}")
-print(f"Precision: {SVC_precision:.2%}")
-print(f"Recall: {SVC_recall:.2%}")
 ```
 
 ## QUESTION 2
 
 1. For each model (your original one, and the 2 new ones for this task), display the classification report and the permutation importances for the most important features.  Discuss which model you would recommend to the Client and why.
 
-_type your write-up and analysis here_
-
-_AI use reflection_
-**Link** to the original chat:
-**The Process** How exactly did you use the tool?
-**The Impact**  How did using AI impact your learning?
+I would reccomend the RandomForestClassifier since it is relatively fast and quite accurate especially when it is compared to the other two models. For example, for this question, I needed to import a pipeline and scaler for the SVC since it takes so much longer especially when itterating multiple times to graph the permutations. (This pipeline and scaler also unintentionally made the SVC model more accurate than it was previously but still not better than the RandomForestClassifier)
 
 ```{python}
-# Include and execute your code here
+ # Include and execute your code here
 import polars as pl
 import numpy as np
 from lets_plot import *
+
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
-# add the additional libraries you need to import for ML here
+from sklearn.metrics import classification_report
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.inspection import permutation_importance
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+from pathlib import Path
+from IPython.display import display
 
 LetsPlot.setup_html(isolated_frame=True)
 
-df = pl.read_csv("dwellings_ml.csv")
+homes = pl.read_csv("dwellings_ml.csv")
+
+predictors = ["stories", "numbaths", "livearea", "basement", "quality_C", "gartype_Att"]
+
+features = homes.select(predictors).to_numpy()
+targets = homes["before1980"].to_numpy()
+
+train_data, test_data, train_targets, test_targets = train_test_split(features, targets, test_size = .3)
+
+# Uses the same RandomForestClassifier model as before on the data.
+RFC_classifier = RandomForestClassifier()
+RFC_classifier.fit(train_data, train_targets)
+RFC_targets_predicted = RFC_classifier.predict(test_data)
+
+# Creates the classification report for the RFC model.
+RFC_report = classification_report(test_targets, RFC_targets_predicted)
+
+# Creates the chart for the most important classifiers for the RFC model.
+RFC_permutation_results = permutation_importance(
+  RFC_classifier,
+  test_data,
+  test_targets,
+  scoring = "accuracy",
+  n_repeats = 10,
+  random_state = 42,
+  n_jobs = 1
+)
+
+RFC_importance_df = (pl
+  .DataFrame({
+    "feature": predictors,
+    "importance_pp": RFC_permutation_results.importances_mean * 100,
+    "std_pp": RFC_permutation_results.importances_std * 100
+  })
+  .with_columns(
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("lower"),
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("upper")
+  )
+  .sort("importance_pp", descending=True)
+)
+
+RFC_importance_graph = (
+  ggplot(
+    RFC_importance_df.to_dict(as_series=False), 
+    aes(
+      x = "feature",
+      y = "importance_pp"
+    )
+  ) +
+  geom_bar(
+    stat = "identity", 
+    fill="#2878A0"
+  ) +
+  labs(
+    title = "RFC Permutation",
+    subtitle = " ",
+    x = " ",
+    y = "Decrease in accuracy (% points)"
+  )
+)
+
+# Uses the GaussianNB model on the same data.
+GNB_classifier = GaussianNB()
+GNB_classifier.fit(train_data, train_targets)
+GNB_targets_predicted = GNB_classifier.predict(test_data)
+
+# Creates the classification report for the GNB model.
+GNB_report = classification_report(test_targets, GNB_targets_predicted)
+
+# Creates the chart for the most important classifiers for the GNB model.
+GNB_permutation_results = permutation_importance(
+  GNB_classifier,
+  test_data,
+  test_targets,
+  scoring = "accuracy",
+  n_repeats = 10,
+  random_state = 42,
+  n_jobs = 1
+)
+
+GNB_importance_df = (pl
+  .DataFrame({
+    "feature": predictors,
+    "importance_pp": GNB_permutation_results.importances_mean * 100,
+    "std_pp": GNB_permutation_results.importances_std * 100
+  })
+  .with_columns(
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("lower"),
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("upper")
+  )
+  .sort("importance_pp", descending=True)
+)
+
+GNB_importance_graph = (
+  ggplot(
+    GNB_importance_df.to_dict(as_series=False), 
+    aes(
+      x = "feature",
+      y = "importance_pp"
+    )
+  ) +
+  geom_bar(
+    stat = "identity", 
+    fill="#2878A0"
+  ) +
+  labs(
+    title = "GNB Permutation",
+    subtitle = "Averace accuracy decrease.",
+    x = "Predictors",
+    y = " "
+  )
+)
+
+# Uses the SVC model on the same data. (Scaler is needed because SVC is so slow.)
+SVC_classifier = make_pipeline(StandardScaler(), SVC())
+SVC_classifier.fit(train_data, train_targets)
+SVC_targets_predicted = SVC_classifier.predict(test_data)
+
+# Creates the classification report for the SVC model.
+SVC_report = classification_report(test_targets, SVC_targets_predicted)
+
+# Creates the chart for the most important classifiers for the SVC model.
+SVC_permutation_results = permutation_importance(
+  SVC_classifier,
+  test_data,
+  test_targets,
+  scoring = "accuracy",
+  n_repeats = 10,
+  random_state = 42,
+  n_jobs = 1
+)
+
+SVC_importance_df = (pl
+  .DataFrame({
+    "feature": predictors,
+    "importance_pp": SVC_permutation_results.importances_mean * 100,
+    "std_pp": SVC_permutation_results.importances_std * 100
+  })
+  .with_columns(
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("lower"),
+    (pl.col("importance_pp") - pl.col("std_pp")).alias("upper")
+  )
+  .sort("importance_pp", descending=True)
+)
+
+SVC_importance_graph = (
+  ggplot(
+    SVC_importance_df.to_dict(as_series=False), 
+    aes(
+      x = "feature",
+      y = "importance_pp"
+    )
+  ) +
+  geom_bar(
+    stat = "identity", 
+    fill="#2878A0"
+  ) +
+  labs(
+    title = "SVC Permutation",
+    subtitle = " ",
+    x = " ",
+    y = " "
+  )
+)
+
+# Displays the graphs and tables for each classifier.
+print("| --- RandomForestClassifier --- |")
+print(RFC_report)
+
+print()
+
+print("| --- GaussianNB --- |")
+print(GNB_report)
+
+print("")
+
+print("| --- SVC --- |")
+print(SVC_report)
+
+display(gggrid([RFC_importance_graph, GNB_importance_graph, SVC_importance_graph]), ncol = 3)
 ```
